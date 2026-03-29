@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.env
+data/curator.db
+data/preferences.json
+logs/
+*.log
+.DS_Store
