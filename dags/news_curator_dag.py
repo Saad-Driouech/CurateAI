@@ -23,7 +23,15 @@ with DAG(
         pass
 
     def _fetch_news(**kwargs):
-        pass
+        from src.fetcher.search import fetch_articles
+        from src.fetcher.dedup import filter_new
+
+        articles = fetch_articles()
+        new_articles = filter_new(articles)
+        kwargs["ti"].xcom_push(
+            key="articles",
+            value=[a.model_dump_json() for a in new_articles],
+        )
 
     def _filter_news(**kwargs):
         pass
