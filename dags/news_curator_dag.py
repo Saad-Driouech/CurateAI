@@ -34,7 +34,17 @@ with DAG(
         )
 
     def _filter_news(**kwargs):
-        pass
+        from src.filter.scorer import filter_articles
+        from src.models import Article
+
+        ti = kwargs["ti"]
+        raw_articles = ti.xcom_pull(task_ids="fetch_news", key="articles")
+        articles = [Article.model_validate_json(a) for a in raw_articles]
+        scored = filter_articles(articles)
+        ti.xcom_push(
+            key="scored_articles",
+            value=[s.model_dump_json() for s in scored],
+        )
 
     def _publish_news(**kwargs):
         pass
