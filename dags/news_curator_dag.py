@@ -47,7 +47,14 @@ with DAG(
         )
 
     def _publish_news(**kwargs):
-        pass
+        from src.discord.publisher import publish_articles
+        from src.models import ScoredArticle
+
+        ti = kwargs["ti"]
+        raw_scored = ti.xcom_pull(task_ids="filter_news", key="scored_articles")
+        scored = [ScoredArticle.model_validate_json(s) for s in raw_scored]
+        count = publish_articles(scored)
+        print(f"Published {count} articles to Discord")
 
     poll_feedback = PythonOperator(
         task_id="poll_feedback",
