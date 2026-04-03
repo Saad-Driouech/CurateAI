@@ -5,6 +5,7 @@ from datetime import datetime
 
 import discord
 from dotenv import load_dotenv
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 from src.models import ScoredArticle
 
@@ -48,6 +49,14 @@ def _is_already_posted(conn: sqlite3.Connection, url: str) -> bool:
     return row is not None
 
 
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, max=10))
+async def _send_with_reactions(channel: discord.TextChannel, embed: discord.Embed) -> discord.Message:
+    msg = await channel.send(embed=embed)
+    await msg.add_reaction("👍")
+    await msg.add_reaction("👎")
+    return msg
+
+
 def _build_embed(article: ScoredArticle) -> discord.Embed:
     color = CATEGORY_COLORS.get(article.refined_category, 0x99AAB5)
     embed = discord.Embed(
@@ -88,9 +97,7 @@ async def _publish(scored_articles: list[ScoredArticle]) -> int:
                     continue
 
                 embed = _build_embed(sa)
-                msg = await channel.send(embed=embed)
-                await msg.add_reaction("👍")
-                await msg.add_reaction("👎")
+                msg = await _send_with_reactions(channel, embed)
 
                 conn.execute(
                     "INSERT INTO posted_articles (message_id, url, title, summary, score, reason, category, posted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",

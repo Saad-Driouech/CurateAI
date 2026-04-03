@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 from tavily import TavilyClient
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 from src.models import Article
 
@@ -44,17 +45,22 @@ CATEGORY_MAP = {
 }
 
 
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, max=10))
+def _search_query(client: TavilyClient, query: str, max_results: int) -> dict:
+    return client.search(
+        query=query,
+        search_depth="advanced",
+        max_results=max_results,
+        topic="news",
+    )
+
+
 def fetch_articles(max_per_query: int = 10) -> list[Article]:
     client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
     articles: list[Article] = []
 
     for query in QUERIES:
-        response = client.search(
-            query=query,
-            search_depth="advanced",
-            max_results=max_per_query,
-            topic="news",
-        )
+        response = _search_query(client, query, max_per_query)
         category = CATEGORY_MAP[query]
         for result in response.get("results", []):
             try:

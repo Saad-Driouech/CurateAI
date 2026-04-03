@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta
 
 from airflow import DAG
@@ -7,6 +8,8 @@ default_args = {
     "owner": "curateai",
     "retries": 1,
     "retry_delay": timedelta(minutes=5),
+    "email": [e for e in [os.environ.get("ALERT_EMAIL")] if e],
+    "email_on_failure": bool(os.environ.get("ALERT_EMAIL")),
 }
 
 with DAG(
