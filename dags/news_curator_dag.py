@@ -20,7 +20,13 @@ with DAG(
 ) as dag:
 
     def _poll_feedback(**kwargs):
-        pass
+        from src.feedback.reaction_poller import poll_reactions
+        from src.feedback.preference_builder import build_preferences
+
+        count = poll_reactions()
+        print(f"Polled reactions for {count} messages")
+        prefs = build_preferences()
+        print(f"Built preferences: {len(prefs.get('liked', []))} liked, {len(prefs.get('disliked', []))} disliked")
 
     def _fetch_news(**kwargs):
         from src.fetcher.search import fetch_articles

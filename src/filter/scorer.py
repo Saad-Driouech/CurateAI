@@ -1,3 +1,4 @@
+import json
 import os
 
 import anthropic
@@ -35,17 +36,48 @@ class ArticleScore(BaseModel):
     refined_category: str = Field(description="One of: models, research, tools, safety, multimodal, industry, other")
 
 
+PREFERENCES_PATH = "data/preferences.json"
+
+
+def _load_preferences() -> str:
+    if not os.path.exists(PREFERENCES_PATH):
+        return ""
+
+    with open(PREFERENCES_PATH) as f:
+        prefs = json.load(f)
+
+    parts = []
+    if prefs.get("liked"):
+        parts.append("Examples of articles I liked:")
+        for p in prefs["liked"]:
+            parts.append(f'- [{p["category"]}] {p["title"]}: {p["summary"][:100]}')
+
+    if prefs.get("disliked"):
+        parts.append("\nExamples of articles I didn't like:")
+        for p in prefs["disliked"]:
+            parts.append(f'- [{p["category"]}] {p["title"]}: {p["summary"][:100]}')
+
+    return "\n".join(parts)
+
+
+def _build_system_prompt() -> str:
+    preferences = _load_preferences()
+    if preferences:
+        return SYSTEM_PROMPT + "\n" + preferences
+    return SYSTEM_PROMPT
+
+
 def _build_client() -> instructor.Instructor:
     return instructor.from_anthropic(
         anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     )
 
 
-def score_article(client: instructor.Instructor, article: Article) -> ScoredArticle:
+def score_article(client: instructor.Instructor, article: Article, system_prompt: str) -> ScoredArticle:
     result = client.chat.completions.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=256,
-        system=SYSTEM_PROMPT,
+        system=system_prompt,
         messages=[
             {
                 "role": "user",
@@ -68,9 +100,10 @@ def filter_articles(
     max_results: int = 10,
 ) -> list[ScoredArticle]:
     client = _build_client()
+    system_prompt = _build_system_prompt()
     scored = []
     for article in articles:
-        result = score_article(client, article)
+        result = score_article(client, article, system_prompt)
         if result.score >= min_score:
             scored.append(result)
 
