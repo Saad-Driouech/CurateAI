@@ -6,13 +6,16 @@ An automated AI news curation pipeline that fetches, filters, and delivers AI-re
 
 CurateAI runs twice daily (6:00 and 18:00 UTC) via Apache Airflow and executes four tasks in sequence:
 
-```
-poll_feedback  >>  fetch_news  >>  filter_news  >>  publish_news
-      |                |               |                |
-  Read Discord    Search Tavily    Score with      Post embeds
-  reactions for   for AI news,     Claude, keep    to Discord,
-  recent posts,   deduplicate      top 10 above    add reaction
-  build prefs     via SQLite       score 6         buttons
+```mermaid
+flowchart LR
+    A[poll_feedback] --> B[fetch_news] --> C[filter_news] --> D[publish_news]
+
+    A -.- A1["Read Discord reactions\nbuild preference profile"]
+    B -.- B1["Search Tavily for AI news\ndeduplicate via SQLite"]
+    C -.- C1["Score with Claude\nkeep top 10 above 6"]
+    D -.- D1["Post embeds to Discord\nadd 👍 👎 buttons"]
+
+    D -.->|user reacts| A
 ```
 
 ### The Feedback Loop
@@ -96,6 +99,7 @@ CurateAI/
 | `DISCORD_BOT_TOKEN` | Yes | Discord bot token |
 | `DISCORD_CHANNEL_ID` | Yes | Target Discord channel ID |
 | `SQLITE_DB_PATH` | No | Path to SQLite DB (default: `data/curator.db`) |
+| `AIRFLOW_ADMIN_PASSWORD` | No | Airflow UI password (default: `admin`) |
 | `ALERT_EMAIL` | No | Email for Airflow failure alerts |
 
 ## Running Tests
